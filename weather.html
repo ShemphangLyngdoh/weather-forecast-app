@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Weather Forecast Web Application</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+body{
+font-family:Arial;
+background:linear-gradient(135deg,#4facfe,#00f2fe);
+display:flex;
+justify-content:center;
+align-items:center;
+min-height:100vh;
+margin:0;
+transition:0.5s;
+}
+
+.container{
+background:white;
+padding:30px;
+border-radius:15px;
+width:520px;
+text-align:center;
+box-shadow:0 10px 25px rgba(0,0,0,0.2);
+}
+
+input{
+padding:10px;
+width:65%;
+border-radius:8px;
+border:1px solid #ccc;
+}
+
+button{
+padding:10px 15px;
+border:none;
+background:#2196f3;
+color:white;
+border-radius:8px;
+cursor:pointer;
+}
+
+button:hover{
+background:#1976d2;
+}
+
+.weather img{
+width:110px;
+}
+
+.forecast{
+margin-top:20px;
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:12px;
+}
+
+.day{
+background:#f1f1f1;
+padding:15px;
+border-radius:10px;
+font-size:14px;
+box-shadow:0 3px 8px rgba(0,0,0,0.15);
+}
+
+canvas{
+margin-top:20px;
+height:220px !important;
+}
+
+#map{
+height:300px;
+margin-top:25px;
+border-radius:12px;
+}
+
+.dark{
+background:#121212;
+color:white;
+}
+
+.dark .container{
+background:#2c2c2c;
+}
+
+.dark .day{
+background:#444;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Weather Forecast Web Application</h2>
+<p>Web Technology Project</p>
+
+<p><b>Name:</b> Shemphang Lyngdoh</p>
+<p><b>Email:</b> lyngdohshemphang387@gmail.com</p>
+
+<button onclick="toggleDark()">Toggle Dark Mode</button>
+
+<br><br>
+
+<input id="cityInput" placeholder="Enter city name">
+<button onclick="getWeather()">Search</button>
+
+<div id="weatherBox" style="display:none">
+
+<h3 id="city"></h3>
+
+<img id="icon">
+
+<p id="temp"></p>
+<p id="condition"></p>
+<p id="humidity"></p>
+<p id="wind"></p>
+
+<h3>7 Day Forecast</h3>
+<div class="forecast" id="forecast"></div>
+
+<h3>Hourly Temperature</h3>
+<canvas id="tempChart"></canvas>
+
+<h3>Weather Map</h3>
+<div id="map"></div>
+
+</div>
+
+</div>
+
+<script>
+
+const apiKey="8ea602e619456606de39551df27707a9";
+
+let chart;
+let map;
+
+function getWeather(){
+
+let city=document.getElementById("cityInput").value;
+
+fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${apiKey}`)
+
+.then(res=>res.json())
+
+.then(data=>{
+
+displayWeather(data);
+getForecast(data.coord.lat,data.coord.lon);
+initMap(data.coord.lat,data.coord.lon,data.name);
+changeBackground(data.weather[0].main);
+
+});
+
+}
+
+function displayWeather(data){
+
+document.getElementById("weatherBox").style.display="block";
+
+document.getElementById("city").innerText="City: "+data.name+", "+data.sys.country;
+
+document.getElementById("temp").innerText="Temperature: "+data.main.temp+" °C";
+
+document.getElementById("condition").innerText="Condition: "+data.weather[0].main;
+
+document.getElementById("humidity").innerText="Humidity: "+data.main.humidity+"%";
+
+document.getElementById("wind").innerText="Wind Speed: "+data.wind.speed+" km/h";
+
+document.getElementById("icon").src="https://openweathermap.org/img/wn/"+data.weather[0].icon+"@2x.png";
+
+}
+
+function getForecast(lat,lon){
+
+fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`)
+
+.then(res=>res.json())
+
+.then(data=>{
+
+let forecastDiv=document.getElementById("forecast");
+forecastDiv.innerHTML="";
+
+let labels=[];
+let temps=[];
+
+for(let i=0;i<7;i++){
+
+let day=data.list[i*4];
+let date=new Date(day.dt_txt);
+let weekday=date.toLocaleDateString("en-US",{weekday:"short"});
+
+forecastDiv.innerHTML+=`
+
+<div class="day">
+
+<b>${weekday}</b><br>
+
+<img src="https://openweathermap.org/img/wn/${day.weather[0].icon}.png">
+
+<br>${day.main.temp} °C
+
+</div>
+
+`;
+
+}
+
+for(let i=0;i<8;i++){
+
+let hour=data.list[i];
+let time=new Date(hour.dt_txt).getHours()+":00";
+
+labels.push(time);
+temps.push(hour.main.temp);
+
+}
+
+drawChart(labels,temps);
+
+});
+
+}
+
+function drawChart(labels,temps){
+
+if(chart) chart.destroy();
+
+chart=new Chart(document.getElementById("tempChart"),{
+
+type:"line",
+
+data:{
+labels:labels,
+datasets:[{
+label:"Temperature °C",
+data:temps,
+borderColor:"blue",
+fill:false
+}]
+}
+
+});
+
+}
+
+function initMap(lat,lon,city){
+
+if(map) map.remove();
+
+map=L.map("map").setView([lat,lon],10);
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+maxZoom:19
+}).addTo(map);
+
+L.marker([lat,lon]).addTo(map)
+.bindPopup(city)
+.openPopup();
+
+}
+
+function changeBackground(condition){
+
+if(condition==="Rain"){
+
+document.body.style.background="linear-gradient(135deg,#5f9cff,#3a6073)";
+
+}
+
+else if(condition==="Clear"){
+
+document.body.style.background="linear-gradient(135deg,#fceabb,#f8b500)";
+
+}
+
+else if(condition==="Clouds"){
+
+document.body.style.background="linear-gradient(135deg,#bdc3c7,#2c3e50)";
+
+}
+
+else{
+
+document.body.style.background="linear-gradient(135deg,#4facfe,#00f2fe)";
+
+}
+
+}
+
+function toggleDark(){
+
+document.body.classList.toggle("dark");
+
+}
+
+document.getElementById("cityInput").addEventListener("keypress",function(e){
+
+if(e.key==="Enter"){
+getWeather();
+}
+
+});
+
+function getLocationWeather(){
+
+if(navigator.geolocation){
+
+navigator.geolocation.getCurrentPosition(function(position){
+
+let lat=position.coords.latitude;
+let lon=position.coords.longitude;
+
+fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`)
+
+.then(res=>res.json())
+
+.then(data=>{
+
+displayWeather(data);
+getForecast(lat,lon);
+initMap(lat,lon,data.name);
+changeBackground(data.weather[0].main);
+
+});
+
+});
+
+}
+
+}
+
+getLocationWeather();
+
+</script>
+
+</body>
+</html>
