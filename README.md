@@ -1,5 +1,8 @@
 # Weather Forecast App
 
+Live Demo:
+https://shemphanglyngdoh.github.io/weather-forecast-app/
+
 This is a simple weather forecast web application built using HTML, CSS, and JavaScript.
 
 Features:
@@ -12,4 +15,4 @@ HTML
 CSS
 JavaScript
 OpenWeather API
-https://shemphanglyngdoh.github.io/weather-forecast-app/
+
